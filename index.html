@@ -22,6 +22,9 @@
   header.top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:6px 2px 14px;}
   header.top h1{font-size:22px;margin:0;letter-spacing:-.5px;}
   header.top .tag{font-size:12px;color:#fff;background:var(--brand);padding:3px 9px;border-radius:999px;font-weight:700;}
+  .nav{display:inline-flex;background:#eef1f7;border-radius:10px;padding:3px;}
+  .nav a{font-size:13px;font-weight:700;color:var(--sub);padding:6px 13px;border-radius:8px;text-decoration:none;}
+  .nav a.on{background:#fff;color:var(--brand-d);box-shadow:0 1px 4px rgba(0,0,0,.08);}
   header.top .meta{font-size:12.5px;color:var(--sub);margin-left:auto;}
 
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);}
@@ -161,7 +164,11 @@
 <div class="wrap">
   <header class="top">
     <h1>🎓 2027 전문대 수시 합격진단</h1>
-    <span class="tag">매칭 엔진</span>
+    <nav class="nav">
+      <a href="index.html" class="on">🎓 합격진단</a>
+      <a href="dashboard.html">🔍 탐색·비교</a>
+    </nav>
+    <span class="tag">매칭</span>
     <span class="meta" id="dataMeta"></span>
   </header>
 
