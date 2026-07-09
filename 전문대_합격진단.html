@@ -56,8 +56,22 @@
   .mainrow{display:none;}
   .subopts{margin-top:10px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
   .lnk{font-size:12.5px;color:var(--brand-d);cursor:pointer;text-decoration:underline;}
-  .paste-wrap{margin-top:10px;}
-  .paste-wrap textarea{width:100%;min-height:64px;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:12.5px;resize:vertical;}
+  .paste-wrap{margin-top:12px;border-top:1px dashed var(--line);padding-top:12px;}
+  .sb-head{font-size:13.5px;font-weight:800;margin-bottom:4px;}
+  .beta{font-size:10px;color:#fff;background:var(--reach);padding:1px 6px;border-radius:5px;vertical-align:middle;}
+  .sb-guide{font-size:12px;color:var(--sub);line-height:1.55;margin-bottom:8px;}
+  .sb-guide b{color:var(--ink);}
+  .paste-wrap textarea{width:100%;min-height:78px;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:12.5px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;}
+  #sbPreview{margin-top:10px;background:#f7f9fd;border:1px solid var(--line);border-radius:10px;padding:11px 12px;}
+  .sb-summary{font-size:12.5px;line-height:1.7;color:var(--ink);}
+  .sb-summary b{color:var(--brand-d);}
+  .sb-summary .warn{color:var(--hard);}
+  .sb-actions{margin-top:9px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+  .sb-detail{margin-top:9px;max-height:230px;overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff;}
+  table.sbt{border-collapse:collapse;width:100%;font-size:11.5px;}
+  table.sbt th,table.sbt td{border-bottom:1px solid var(--line);padding:4px 7px;text-align:center;white-space:nowrap;}
+  table.sbt th{background:#f5f8ff;color:var(--sub);position:sticky;top:0;}
+  table.sbt td.ex{color:var(--none);text-decoration:line-through;}
   .btn{font-size:13px;font-weight:700;padding:7px 13px;border-radius:9px;border:1px solid var(--brand);
     background:var(--brand);color:#fff;cursor:pointer;}
   .btn.ghost{background:#fff;color:var(--brand-d);}
@@ -199,10 +213,22 @@
         <span class="lnk" id="toggleMain">＋ 주요교과(국·수·영) 별도 입력 — 주요교과 반영 대학용</span>
       </div>
       <div class="paste-wrap">
-        <textarea id="pasteBox" placeholder="빠른 입력: 학기별 전과목 평균등급 5개를 쉼표나 공백으로 붙여넣기 (예: 4.1, 3.8, 3.5, 3.2, 3.0)"></textarea>
+        <div class="sb-head">📋 생기부 자동 입력 <span class="beta">베타</span></div>
+        <div class="sb-guide">생활기록부 <b>‘교과학습발달상황’</b> 표를 그대로 복사해 붙여넣으면 과목·단위수·석차등급을 인식해 학기별 평균을 자동 계산합니다.
+          (학기별 평균등급 숫자 5개만 붙여넣어도 됩니다.)</div>
+        <textarea id="pasteBox" placeholder="예)&#10;1학년&#10;학기  교과  과목  단위수  원점수/과목평균(표준편차)  성취도(수강자수)  석차등급&#10;1  국어  국어  4  90/71.2(13.5)  A(298)  2&#10;1  수학  수학  4  85/68.3(15.2)  B(298)  3&#10;...&#10;&#10;또는 간단히:  4.1, 3.8, 3.5, 3.2, 3.0"></textarea>
         <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <button class="btn ghost" id="pasteBtn">붙여넣기 값 채우기</button>
+          <button class="btn" id="pasteBtn">분석하기</button>
+          <button class="btn ghost" id="pasteClear">지우기</button>
           <span class="pastemsg" id="pasteMsg"></span>
+        </div>
+        <div id="sbPreview" style="display:none">
+          <div class="sb-summary" id="sbSummary"></div>
+          <div class="sb-detail" id="sbDetail" style="display:none"></div>
+          <div class="sb-actions">
+            <span class="lnk" id="sbToggleDetail">인식된 과목 상세 보기</span>
+            <button class="btn" id="sbApply">이 값으로 표 채우기</button>
+          </div>
         </div>
       </div>
       <div class="calcbadge" id="calcBadge" style="display:none"></div>
@@ -492,15 +518,103 @@ document.getElementById('toggleMain').addEventListener('click',()=>{
   row.style.display=show?'table-row':'none';
   document.getElementById('toggleMain').textContent=(show?'－':'＋')+' 주요교과(국·수·영) 별도 입력 — 주요교과 반영 대학용';
 });
-document.getElementById('pasteBtn').addEventListener('click',()=>{
-  const txt=document.getElementById('pasteBox').value;
-  const nums=(txt.match(/\d+(\.\d+)?/g)||[]).map(Number).filter(n=>n>=1&&n<=9);
+/* ---------- 생기부 파서 ---------- */
+const MAIN_GWA=['국어','수학','영어'];
+const SLOTLBL=['1-1','1-2','2-1','2-2','3-1'];
+const PRICE=/^\d{1,3}(?:\.\d+)?\/\d{1,3}(?:\.\d+)?\([\d.]+\)/;   // 원점수/과목평균(표준편차)
+function slotIdx(yr,sem){
+  if(yr==1&&sem==1)return 0; if(yr==1&&sem==2)return 1;
+  if(yr==2&&sem==1)return 2; if(yr==2&&sem==2)return 3;
+  if(yr==3&&sem==1)return 4; return -1;
+}
+function isSaengibu(txt){return PRICE.test(txt.replace(/\s+/g,' '))|| /\d{2,3}\/\d{2,3}\([\d.]+\)/.test(txt);}
+function parseSaengibu(text){
+  const subs=[]; let excluded=0, curYr=null;
+  text.split(/\r?\n/).forEach(raw=>{
+    const line=raw.trim(); if(!line) return;
+    const ym=line.match(/([1-3])\s*학년/);
+    if(ym && line.replace(/\s/g,'').length<=8){curYr=+ym[1];return;}
+    if(/석차등급|성취도\(|단위\s*수|원점수\/과목/.test(line) && !/\d\/\d+\([\d.]+\)/.test(line))return; // 헤더
+    const f=line.split(/\s+/);
+    const pi=f.findIndex(x=>PRICE.test(x));
+    if(pi<2)return;                                   // 원점수 앞에 최소 교과+단위수 필요
+    const units=parseInt(f[pi-1]); if(isNaN(units))return;
+    let head=f.slice(0,pi-1), sem=null;
+    if(/^[12]$/.test(head[0])){sem=+head[0];head=head.slice(1);}
+    const gwa=head[0]||'', name=head.slice(1).join(' ')||gwa;
+    const tail=f.slice(pi+1).join(' ');
+    const gm=tail.match(/([1-9])\s*$/);               // 성취도(수강자수) 뒤 석차등급
+    const grade=gm?+gm[1]:null;
+    if(grade!=null){
+      subs.push({yr:curYr,sem,gwa,name,units:units||1,grade,
+        main:MAIN_GWA.some(m=>gwa.indexOf(m)===0)});
+    }else excluded++;
+  });
+  // 학기별 단위수 가중 평균
+  const acc={all:Array.from({length:5},()=>[0,0]),main:Array.from({length:5},()=>[0,0])};
+  subs.forEach(x=>{
+    const u=x.units||1;
+    let slots=[];
+    if(x.sem){const i=slotIdx(x.yr,x.sem);if(i>=0)slots=[i];}
+    else slots=(x.yr==1?[0,1]:x.yr==2?[2,3]:x.yr==3?[4]:[]);
+    slots.forEach(i=>{acc.all[i][0]+=x.grade*u;acc.all[i][1]+=u;
+      if(x.main){acc.main[i][0]+=x.grade*u;acc.main[i][1]+=u;}});
+  });
+  const avgArr=a=>a.map(p=>p[1]?Math.round(p[0]/p[1]*100)/100:null);
+  return {subs,excluded,all:avgArr(acc.all),main:avgArr(acc.main)};
+}
+let SB=null;
+function runParse(){
+  const txt=document.getElementById('pasteBox').value.trim();
   const msg=document.getElementById('pasteMsg');
-  if(nums.length<1){msg.textContent='등급 값을 인식하지 못했습니다. 1~9 사이 숫자를 붙여넣어 주세요.';return;}
-  const use=nums.slice(0,5);
-  document.querySelectorAll('table.sem input[data-b="all"]').forEach((inp,i)=>{inp.value=use[i]!=null?use[i]:'';});
+  const prev=document.getElementById('sbPreview');
+  if(!txt){msg.textContent='내용을 붙여넣어 주세요.';prev.style.display='none';return;}
+  if(!isSaengibu(txt)){                               // 간단 숫자 입력
+    const nums=(txt.match(/\d+(?:\.\d+)?/g)||[]).map(Number).filter(n=>n>=1&&n<=9).slice(0,5);
+    prev.style.display='none';
+    if(!nums.length){msg.textContent='등급 값을 인식하지 못했습니다.';return;}
+    document.querySelectorAll('table.sem input[data-b="all"]').forEach((inp,i)=>{inp.value=nums[i]!=null?nums[i]:'';});
+    readSemInputs();render();
+    msg.textContent=`${nums.length}개 학기 값을 전과목 행에 채웠습니다.`;return;
+  }
+  SB=parseSaengibu(txt);
+  msg.textContent='';
+  if(!SB.subs.length){prev.style.display='none';msg.textContent='석차등급 과목을 인식하지 못했습니다. 표 형식을 확인하거나 아래 표에 직접 입력하세요.';return;}
+  const filled=SB.all.filter(x=>x!=null).length;
+  const semList=SLOTLBL.map((l,i)=>SB.all[i]!=null?`${l} ${SB.all[i].toFixed(2)}`:`${l} –`).join(' · ');
+  const mainList=SB.main.some(x=>x!=null)?('<br>주요교과(국·수·영): '+SLOTLBL.map((l,i)=>SB.main[i]!=null?`${l} ${SB.main[i].toFixed(2)}`:`${l} –`).join(' · ')):'';
+  document.getElementById('sbSummary').innerHTML=
+    `석차등급 과목 <b>${SB.subs.length}개</b> 인식`+
+    (SB.excluded?` · <span class="warn">등급 없는 과목 ${SB.excluded}개 제외</span>`:'')+
+    ` · <b>${filled}개 학기</b> 산출<br>전과목 학기평균: ${semList}${mainList}`;
+  // detail table
+  let dt='<table class="sbt"><thead><tr><th>학년</th><th>학기</th><th>교과</th><th>과목</th><th>단위</th><th>석차등급</th></tr></thead><tbody>';
+  SB.subs.forEach(x=>{dt+=`<tr><td>${x.yr??'?'}</td><td>${x.sem??'?'}</td><td>${x.gwa}</td><td>${x.name}</td><td>${x.units}</td><td>${x.grade}</td></tr>`;});
+  dt+='</tbody></table>';
+  document.getElementById('sbDetail').innerHTML=dt;
+  prev.style.display='block';
+}
+document.getElementById('pasteBtn').addEventListener('click',runParse);
+document.getElementById('pasteClear').addEventListener('click',()=>{
+  document.getElementById('pasteBox').value='';document.getElementById('pasteMsg').textContent='';
+  document.getElementById('sbPreview').style.display='none';SB=null;
+});
+document.getElementById('sbToggleDetail').addEventListener('click',()=>{
+  const d=document.getElementById('sbDetail');const show=d.style.display==='none';
+  d.style.display=show?'block':'none';
+  document.getElementById('sbToggleDetail').textContent=show?'상세 접기':'인식된 과목 상세 보기';
+});
+document.getElementById('sbApply').addEventListener('click',()=>{
+  if(!SB)return;
+  document.querySelectorAll('table.sem input[data-b="all"]').forEach((inp,i)=>{inp.value=SB.all[i]!=null?SB.all[i]:'';});
+  if(SB.main.some(x=>x!=null)){
+    document.querySelector('.mainrow').style.display='table-row';
+    document.getElementById('toggleMain').textContent='－ 주요교과(국·수·영) 별도 입력 — 주요교과 반영 대학용';
+    document.querySelectorAll('table.sem input[data-b="main"]').forEach((inp,i)=>{inp.value=SB.main[i]!=null?SB.main[i]:'';});
+  }
   readSemInputs();render();
-  msg.textContent=`${use.length}개 학기 값을 전과목 행에 채웠습니다.`;
+  document.getElementById('pasteMsg').textContent='표에 반영했습니다. 필요하면 위 표에서 직접 수정하세요.';
+  document.querySelector('table.sem').scrollIntoView({behavior:'smooth',block:'center'});
 });
 
 function setMode(m){
