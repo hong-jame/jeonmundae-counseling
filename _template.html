@@ -111,6 +111,52 @@
   .toolbar .count{font-size:13.5px;color:var(--sub);}
   .toolbar .count b{color:var(--ink);font-size:15px;}
   .sortsel{margin-left:auto;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;}
+  .stuname{font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;width:140px;}
+  .stuname:focus{outline:none;border-color:var(--brand);}
+  .repbtn{font-size:13px;font-weight:800;padding:7px 14px;border:0;border-radius:9px;background:var(--brand);color:#fff;cursor:pointer;}
+  .repbtn:hover{background:var(--brand-d);}
+
+  /* report overlay */
+  .rov{position:fixed;inset:0;background:rgba(20,30,50,.55);z-index:80;display:none;overflow:auto;padding:24px 12px;}
+  .rov.show{display:block;}
+  .report{max-width:820px;margin:0 auto;background:#fff;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.3);}
+  .rep-bar{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;border-radius:14px 14px 0 0;}
+  .rep-bar button{font-size:13px;font-weight:700;padding:7px 14px;border-radius:9px;cursor:pointer;border:1px solid var(--line);background:#fff;}
+  .rep-bar .prt{background:var(--brand);color:#fff;border-color:var(--brand);}
+  .rep-body{padding:26px 30px;}
+  .rep-title{font-size:22px;font-weight:800;letter-spacing:-.5px;margin:0 0 4px;}
+  .rep-meta{font-size:12.5px;color:var(--sub);border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:16px;}
+  .rep-meta b{color:var(--ink);}
+  .rep-sec{margin-bottom:20px;}
+  .rep-sec h3{font-size:14.5px;margin:0 0 9px;padding-left:9px;border-left:4px solid var(--brand);}
+  .rep-sumrow{display:flex;gap:8px;flex-wrap:wrap;}
+  .rep-pill{font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:8px;}
+  .rep-pill.safe{background:var(--safe-bg);color:var(--safe);}
+  .rep-pill.fit{background:var(--fit-bg);color:var(--fit);}
+  .rep-pill.reach{background:var(--reach-bg);color:#b87b00;}
+  .rep-pill.hard{background:var(--hard-bg);color:var(--hard);}
+  table.rept{border-collapse:collapse;width:100%;font-size:12px;margin-top:4px;}
+  table.rept th,table.rept td{border:1px solid var(--line);padding:6px 8px;text-align:center;}
+  table.rept th{background:#f5f8ff;color:var(--sub);font-weight:700;}
+  table.rept td.l{text-align:left;}
+  table.rept .grp{font-weight:800;text-align:left;padding:7px 8px;}
+  table.rept .grp.safe{background:var(--safe-bg);color:var(--safe);}
+  table.rept .grp.fit{background:var(--fit-bg);color:var(--fit);}
+  table.rept .grp.reach{background:var(--reach-bg);color:#b87b00;}
+  table.rept .grp.hard{background:var(--hard-bg);color:var(--hard);}
+  .rep-note{font-size:12px;line-height:1.7;color:var(--ink);}
+  .rep-note .bk{padding:5px 0;border-bottom:1px dashed var(--line);}
+  .rep-note .bk b{color:var(--brand-d);}
+  .rep-chk{font-size:12.5px;line-height:1.9;}
+  .rep-foot{font-size:11px;color:var(--sub);line-height:1.6;border-top:1px solid var(--line);padding-top:12px;margin-top:8px;}
+  @media print{
+    body *{visibility:hidden;}
+    #rov,#rov *{visibility:visible;}
+    #rov{position:absolute;inset:0;background:#fff;padding:0;overflow:visible;}
+    .report{box-shadow:none;max-width:100%;border-radius:0;}
+    .rep-bar{display:none;}
+    .rep-sec{page-break-inside:avoid;}
+  }
 
   .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;}
   .card{background:#fff;border:1px solid var(--line);border-left-width:5px;border-radius:12px;padding:13px 14px;box-shadow:var(--shadow);}
@@ -258,6 +304,8 @@
 
   <div class="toolbar">
     <span class="count">진단 결과 <b id="cnt">0</b>개 학과</span>
+    <input id="stuName" class="stuname" placeholder="학생 이름(선택)">
+    <button id="reportBtn" class="repbtn">📄 상담 리포트</button>
     <select class="sortsel" id="sort">
       <option value="fit">적합도순 (추천)</option>
       <option value="grade">합격선(평균등급) 낮은순</option>
@@ -279,9 +327,12 @@
   </footer>
 </div>
 
+<div class="rov" id="rov"><div class="report" id="report"></div></div>
+
 <script>
 const DB = /*__DATA__*/;
 const RULES = /*__RULES__*/;
+const BOKSU = /*__BOKSU__*/;
 const F = DB.fields, ROWS = DB.rows;
 const gwon=r=>r[0],jido=r=>r[1],univ=r=>r[2],dept=r=>r[3],gye=r=>r[4],hak=r=>r[5],
   jtype=r=>r[6],jname=r=>r[7],moin=r=>r[8],comp=r=>r[9],avg26=r=>r[10],avg25=r=>r[11],
@@ -640,6 +691,120 @@ document.getElementById('sunOnly').addEventListener('change',e=>{state.sunOnly=e
 document.getElementById('hideNone').addEventListener('change',e=>{state.hideNone=e.target.checked;state.band=null;render();});
 document.getElementById('sort').addEventListener('change',e=>{state.sort=e.target.value;render();});
 document.getElementById('dataMeta').textContent=`총 ${ROWS.length.toLocaleString()}개 학과·전형 · 125개 전문대`;
+
+/* ---------- 상담 리포트 ---------- */
+const BLABEL={safe:'안정',fit:'적정',reach:'소신',hard:'도전'};
+function shortRule(r,ref){
+  if(state.mode==='auto'&&ref&&!ref.err)return ref.basis;
+  const ru=getRule(r); return ru?((ru.subj||'전과목')+' · '+(ru.sel||'')):'-';
+}
+function todayStr(){const d=new Date();return `${d.getFullYear()}. ${d.getMonth()+1}. ${d.getDate()}.`;}
+function buildReport(){
+  const arr=compute();
+  // 대학||학과 중복 제거, 가장 유리한 밴드 유지
+  const byK={};
+  arr.forEach(o=>{ if(o.b==='none'||o.b==='norule')return;
+    const k=univ(o.r)+'||'+dept(o.r); const cur=byK[k];
+    if(!cur||bandRank[o.b]<bandRank[cur.b])byK[k]=o;});
+  const groups={safe:[],fit:[],reach:[],hard:[]};
+  Object.values(byK).forEach(o=>{if(groups[o.b])groups[o.b].push(o);});
+  const PER=8;
+  Object.values(groups).forEach(g=>g.sort((x,y)=>(avg26(x.r)??9)-(avg26(y.r)??9)));
+  const total=groups.safe.length+groups.fit.length+groups.reach.length+groups.hard.length;
+
+  const name=(document.getElementById('stuName').value||'').trim();
+  const basis=state.mode==='auto'
+    ? '생기부/성적 기반 <b>대학별 반영등급</b> 자동 산출'
+    : `내신 <b>${state.grade.toFixed(1)}등급</b> 직접 입력 기준`;
+  const gyeTxt=state.gye.size?[...state.gye].join(', '):'전체';
+  const gwonTxt=state.gwon.size?[...state.gwon].join(', '):'전체';
+  const hakTxt=state.hak.size?[...state.hak].map(h=>h+'년제').join(', '):'전체';
+
+  let rows='';
+  const recUnivs=new Set(); const sunItems=[];
+  ['safe','fit','reach','hard'].forEach(b=>{
+    const g=groups[b].slice(0,PER); if(!g.length)return;
+    rows+=`<tr><td class="grp ${b}" colspan="6">${BLABEL[b]} 지원권 (${groups[b].length}개 중 ${g.length}개)</td></tr>`;
+    g.forEach(o=>{
+      const r=o.r; recUnivs.add(univ(r));
+      const su=o.ref; const myG=(state.mode==='auto'&&su&&!su.err)?fmtG(su.grade):(state.mode==='auto'?'-':state.grade.toFixed(1));
+      const sunTxt=o.r[16];
+      rows+=`<tr>
+        <td class="l"><b>${univ(r)}</b> ${dept(r)}<br><span style="color:#8a97ad">${jido(r)}·${gye(r)}·${hak(r)}년제</span></td>
+        <td>${myG}</td><td>${fmtG(avg26(r))}</td>
+        <td>${comp(r)==null?'–':(+comp(r)).toFixed(1)+':1'}</td>
+        <td>${fmtP(job(r))}</td>
+        <td class="l" style="font-size:11px">${shortRule(r,su)}</td></tr>`;
+      if(sunTxt)sunItems.push(`${univ(r)} ${dept(r)} — ${sunTxt}`);
+    });
+  });
+  if(!total)rows=`<tr><td colspan="6" style="padding:20px;color:#8a97ad">조건에 맞는 추천 학과가 없습니다. 필터나 등급을 조정해 주세요.</td></tr>`;
+
+  // 복수지원 규칙 (추천 대학들)
+  let bkNote='';
+  [...recUnivs].slice(0,12).forEach(u=>{const b=BOKSU[u]; if(b&&b.n)
+    bkNote+=`<div class="bk"><b>${u}</b> — ${b.p?'복수지원 가능':'복수지원 제한'} · ${b.n}</div>`;});
+  if(!bkNote)bkNote='<div class="bk">추천 대학의 복수지원 정보가 없습니다. 각 대학 모집요강을 확인하세요.</div>';
+
+  const sunNote=sunItems.length
+    ? sunItems.slice(0,10).map(s=>`<div class="bk">⚠ ${s}</div>`).join('')
+    : '<div class="bk">추천 학과 중 수능최저학력기준 적용 학과는 없습니다.</div>';
+
+  document.getElementById('report').innerHTML=`
+    <div class="rep-bar">
+      <button class="prt" onclick="window.print()">🖨 인쇄 / PDF 저장</button>
+      <button onclick="document.getElementById('rov').classList.remove('show')">닫기</button>
+    </div>
+    <div class="rep-body">
+      <div class="rep-title">2027 전문대 수시 지원 상담 리포트</div>
+      <div class="rep-meta">
+        학생: <b>${name||'________'}</b> &nbsp;|&nbsp; 진단 기준: ${basis} &nbsp;|&nbsp; 상담일: <b>${todayStr()}</b><br>
+        희망 계열: <b>${gyeTxt}</b> &nbsp;|&nbsp; 권역: <b>${gwonTxt}</b> &nbsp;|&nbsp; 학제: <b>${hakTxt}</b>
+      </div>
+      <div class="rep-sec">
+        <h3>1. 합격 가능성 요약</h3>
+        <div class="rep-sumrow">
+          <span class="rep-pill safe">안정 ${groups.safe.length}</span>
+          <span class="rep-pill fit">적정 ${groups.fit.length}</span>
+          <span class="rep-pill reach">소신 ${groups.reach.length}</span>
+          <span class="rep-pill hard">도전 ${groups.hard.length}</span>
+        </div>
+      </div>
+      <div class="rep-sec">
+        <h3>2. 추천 학과 (각 지원권 최대 ${PER}개)</h3>
+        <table class="rept">
+          <thead><tr><th class="l">대학 · 학과</th><th>${state.mode==='auto'?'반영등급':'내 등급'}</th><th>합격선<br>(평균)</th><th>경쟁률</th><th>취업률</th><th class="l">학생부 반영</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="rep-sec">
+        <h3>3. 지원 전략 — 복수지원 규칙</h3>
+        <div class="rep-note">${bkNote}</div>
+      </div>
+      <div class="rep-sec">
+        <h3>4. 수능최저학력기준 주의</h3>
+        <div class="rep-note">${sunNote}</div>
+      </div>
+      <div class="rep-sec">
+        <h3>5. 원서접수 체크리스트</h3>
+        <div class="rep-chk">
+          ☐ 지망 대학별 <b>수시 1차 / 2차 모집일정</b> 및 원서접수 기간 확인<br>
+          ☐ 대학별 <b>복수지원 가능 횟수·동일학과 중복 지원</b> 규칙 확인 (위 3번)<br>
+          ☐ 수능최저 적용 학과의 <b>수능 응시영역·등급 조건</b> 충족 여부<br>
+          ☐ <b>안정·적정·소신·도전</b> 균형 있게 지원 (안정 1~2 + 적정 2~3 + 소신/도전 1~2 권장)<br>
+          ☐ 학과별 <b>취업률·충원율·등록금</b> 비교 (탐색·비교 탭 활용)<br>
+          ☐ 제출 서류(생활기록부·검정고시 성적 등) 및 전형료 준비
+        </div>
+      </div>
+      <div class="rep-foot">
+        ※ 본 리포트는 2027 전문대 수시모집 상담자료(2026-07-07, 교육청 상담용) 입결 통계를 바탕으로 자동 생성되었습니다.
+        입결은 지원 참고용이며 실제 합격을 보장하지 않습니다. 최종 지원 전 각 대학 모집요강을 반드시 확인하세요.
+      </div>
+    </div>`;
+  document.getElementById('rov').classList.add('show');
+}
+document.getElementById('reportBtn').addEventListener('click',buildReport);
+document.getElementById('rov').addEventListener('click',e=>{if(e.target.id==='rov')e.currentTarget.classList.remove('show');});
 
 setGrade(4.0);
 </script>
