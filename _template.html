@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2027 전문대 수시 합격진단</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --panel:#ffffff; --ink:#1a2233; --sub:#5b6b86; --line:#e3e8f2;
+    --brand:#2f6df6; --brand-d:#1e51c9;
+    --safe:#0f9d58; --safe-bg:#e6f6ee;
+    --fit:#2f6df6;  --fit-bg:#e8f0ff;
+    --reach:#f4a100; --reach-bg:#fff6e0;
+    --hard:#e5533c; --hard-bg:#fdeae6;
+    --none:#8a97ad; --none-bg:#eef1f6;
+    --shadow:0 2px 10px rgba(30,50,90,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Pretendard","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+    background:var(--bg);color:var(--ink);-webkit-text-size-adjust:100%;}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px 16px 60px;}
+  header.top{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:6px 2px 14px;}
+  header.top h1{font-size:22px;margin:0;letter-spacing:-.5px;}
+  header.top .tag{font-size:12px;color:#fff;background:var(--brand);padding:3px 9px;border-radius:999px;font-weight:700;}
+  header.top .meta{font-size:12.5px;color:var(--sub);margin-left:auto;}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);}
+  .ctrl{padding:16px 18px;margin-bottom:14px;}
+  .grade-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+  .grade-box{display:flex;align-items:center;gap:12px;}
+  .grade-box label{font-weight:800;font-size:15px;}
+  .grade-in{width:96px;font-size:30px;font-weight:800;text-align:center;border:2px solid var(--brand);
+    border-radius:12px;padding:6px 4px;color:var(--brand-d);}
+  .grade-in:focus{outline:none;box-shadow:0 0 0 4px var(--fit-bg);}
+  input[type=range]{flex:1;min-width:180px;accent-color:var(--brand);}
+  .hint{font-size:12px;color:var(--sub);}
+
+  .filters{margin-top:14px;display:flex;flex-direction:column;gap:10px;}
+  .filt-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .filt-line > .flabel{font-size:12.5px;font-weight:700;color:var(--sub);min-width:52px;}
+  .chip{font-size:13px;padding:5px 12px;border:1px solid var(--line);background:#fff;border-radius:999px;
+    cursor:pointer;user-select:none;transition:.12s;white-space:nowrap;}
+  .chip:hover{border-color:var(--brand);}
+  .chip.on{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:700;}
+  .search-in{flex:1;min-width:160px;font-size:14px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;}
+  .search-in:focus{outline:none;border-color:var(--brand);}
+  .toggle{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink);cursor:pointer;}
+  .toggle input{width:16px;height:16px;accent-color:var(--brand);}
+
+  /* summary bands */
+  .bands{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:14px 0;}
+  .band{border-radius:12px;padding:12px 12px;cursor:pointer;border:2px solid transparent;text-align:center;transition:.12s;}
+  .band .n{font-size:26px;font-weight:800;line-height:1;}
+  .band .t{font-size:12.5px;font-weight:700;margin-top:5px;}
+  .band .d{font-size:10.5px;opacity:.8;margin-top:2px;}
+  .band.safe{background:var(--safe-bg);color:var(--safe);}
+  .band.fit{background:var(--fit-bg);color:var(--fit);}
+  .band.reach{background:var(--reach-bg);color:#b87b00;}
+  .band.hard{background:var(--hard-bg);color:var(--hard);}
+  .band.none{background:var(--none-bg);color:var(--none);}
+  .band.off{opacity:.4;}
+  .band.sel{border-color:currentColor;}
+
+  .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 2px 12px;}
+  .toolbar .count{font-size:13.5px;color:var(--sub);}
+  .toolbar .count b{color:var(--ink);font-size:15px;}
+  .sortsel{margin-left:auto;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;}
+
+  /* result cards */
+  .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;}
+  .card{background:#fff;border:1px solid var(--line);border-left-width:5px;border-radius:12px;padding:13px 14px;box-shadow:var(--shadow);}
+  .card.safe{border-left-color:var(--safe);}
+  .card.fit{border-left-color:var(--fit);}
+  .card.reach{border-left-color:var(--reach);}
+  .card.hard{border-left-color:var(--hard);}
+  .card.none{border-left-color:var(--none);}
+  .c-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+  .c-univ{font-size:13px;color:var(--sub);font-weight:700;}
+  .c-dept{font-size:16.5px;font-weight:800;letter-spacing:-.3px;margin-top:1px;}
+  .verdict{font-size:12px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap;}
+  .verdict.safe{background:var(--safe-bg);color:var(--safe);}
+  .verdict.fit{background:var(--fit-bg);color:var(--fit);}
+  .verdict.reach{background:var(--reach-bg);color:#b87b00;}
+  .verdict.hard{background:var(--hard-bg);color:var(--hard);}
+  .verdict.none{background:var(--none-bg);color:var(--none);}
+  .c-tags{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0 9px;}
+  .t2{font-size:11px;padding:2px 8px;border-radius:6px;background:#f1f4fa;color:var(--sub);font-weight:600;}
+  .t2.min{background:var(--hard-bg);color:var(--hard);}
+  .grid-stat{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px;}
+  .st{background:#f7f9fd;border-radius:8px;padding:6px 4px;text-align:center;}
+  .st .k{font-size:10px;color:var(--sub);}
+  .st .v{font-size:14px;font-weight:800;margin-top:2px;}
+  .st .v.small{font-size:12px;font-weight:700;}
+  .trend{font-size:11px;color:var(--sub);margin-top:8px;}
+  .trend b{color:var(--ink);}
+
+  .empty{text-align:center;padding:60px 20px;color:var(--sub);}
+  .more{text-align:center;padding:18px;color:var(--sub);font-size:13px;}
+  footer{margin-top:26px;font-size:11.5px;color:var(--sub);line-height:1.7;border-top:1px solid var(--line);padding-top:14px;}
+
+  @media (max-width:760px){
+    .bands{grid-template-columns:repeat(5,1fr);gap:5px;}
+    .band{padding:9px 4px;}
+    .band .n{font-size:19px;} .band .t{font-size:10.5px;} .band .d{display:none;}
+    .list{grid-template-columns:1fr;}
+    header.top .meta{width:100%;margin-left:0;}
+    .grade-in{font-size:26px;width:84px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>🎓 2027 전문대 수시 합격진단</h1>
+    <span class="tag">매칭 엔진</span>
+    <span class="meta" id="dataMeta"></span>
+  </header>
+
+  <section class="panel ctrl">
+    <div class="grade-row">
+      <div class="grade-box">
+        <label for="grade">내신 등급</label>
+        <input class="grade-in" id="grade" type="number" min="1" max="9" step="0.1" value="4.0" inputmode="decimal">
+      </div>
+      <input id="gradeR" type="range" min="1" max="9" step="0.1" value="4.0">
+      <span class="hint">등급을 입력하면 8,561개 학과가 <b>안정·적정·소신·도전</b>으로 자동 분류됩니다.</span>
+    </div>
+
+    <div class="filters">
+      <div class="filt-line"><span class="flabel">계열</span><span id="fGye"></span></div>
+      <div class="filt-line"><span class="flabel">권역</span><span id="fGwon"></span></div>
+      <div class="filt-line"><span class="flabel">학제</span><span id="fHak"></span></div>
+      <div class="filt-line">
+        <span class="flabel">검색</span>
+        <input class="search-in" id="q" placeholder="대학명 · 학과명 검색 (예: 간호, 서울, 반도체)">
+        <label class="toggle"><input type="checkbox" id="sunOnly"> 수능최저 학과만</label>
+        <label class="toggle"><input type="checkbox" id="hideNone" checked> 입결없는 학과 숨기기</label>
+      </div>
+    </div>
+  </section>
+
+  <div class="bands" id="bands"></div>
+
+  <div class="toolbar">
+    <span class="count">진단 결과 <b id="cnt">0</b>개 학과</span>
+    <select class="sortsel" id="sort">
+      <option value="fit">적합도순 (추천)</option>
+      <option value="grade">합격선(평균등급) 낮은순</option>
+      <option value="comp">경쟁률 낮은순</option>
+      <option value="job">취업률 높은순</option>
+    </select>
+  </div>
+
+  <div class="list" id="list"></div>
+  <div class="more" id="more"></div>
+
+  <footer>
+    ※ 판정 기준: <b>학생 내신 등급</b>과 <b>2026학년도 최종등록자 평균등급</b>의 차이로 자동 분류합니다.
+    · 안정(평균보다 1.0등급 이상 우수) · 적정(0.2~1.0 우수) · 소신(±0.2 내외) · 도전(0.2~1.2 부족) · 어려움(1.2등급 초과 부족)<br>
+    입결은 지원 참고용 통계이며 실제 합격을 보장하지 않습니다. 최종 지원은 각 대학 모집요강을 확인하세요.
+    데이터: 2027 전문대 수시모집 상담자료(2026-07-07, 교육청 상담용) · 125개교 · 단일 파일(오프라인 사용 가능).
+  </footer>
+</div>
+
+<script>
+const DB = /*__DATA__*/;
+const F = DB.fields, ROWS = DB.rows;
+// field index map
+const IX={};F.forEach((n,i)=>IX[n]=i);
+const gwon=r=>r[0],jido=r=>r[1],univ=r=>r[2],dept=r=>r[3],gye=r=>r[4],hak=r=>r[5],
+  jtype=r=>r[6],jname=r=>r[7],moin=r=>r[8],comp=r=>r[9],avg26=r=>r[10],avg25=r=>r[11],
+  avg24=r=>r[12],min26=r=>r[13],chung=r=>r[14],job=r=>r[15],sunj=r=>r[16];
+
+// ---- build filter chips from data ----
+const state={grade:4.0,gye:new Set(),gwon:new Set(),hak:new Set(),q:'',sunOnly:false,hideNone:true,band:null,sort:'fit'};
+function uniq(fn){const s=new Set();ROWS.forEach(r=>{const v=fn(r);if(v!==null&&v!==undefined&&v!=='')s.add(v);});return [...s];}
+const gyeOrder=['간호보건','공학','자연','인문사회','예체능','자연과학'];
+function orderList(vals,ord){return vals.sort((a,b)=>{let ia=ord.indexOf(a),ib=ord.indexOf(b);ia=ia<0?99:ia;ib=ib<0?99:ib;return ia-ib||String(a).localeCompare(b,'ko');});}
+function chipHost(id,vals,setKey,fmt){
+  const host=document.getElementById(id);
+  vals.forEach(v=>{
+    const c=document.createElement('span');c.className='chip';c.textContent=fmt?fmt(v):v;
+    c.onclick=()=>{const S=state[setKey];S.has(v)?S.delete(v):S.add(v);c.classList.toggle('on');render();};
+    host.appendChild(c);
+  });
+}
+chipHost('fGye',orderList(uniq(gye),gyeOrder),'gye');
+const gwonOrder=['수도권','충청권','강원권','대구경북권','부산울산경남권','호남권','제주권'];
+chipHost('fGwon',orderList(uniq(gwon),gwonOrder),'gwon');
+chipHost('fHak',uniq(hak).sort((a,b)=>a-b),'hak',v=>v+'년제');
+
+// ---- judgment ----
+function band(r){
+  const a=avg26(r);
+  if(a===null||a===undefined) return 'none';
+  const diff=a-state.grade; // >0 => student better(lower number)
+  if(diff>=1.0) return 'safe';
+  if(diff>=0.2) return 'fit';
+  if(diff>=-0.2) return 'reach';       // 소신
+  if(diff>=-1.2) return 'hard';        // 도전
+  return 'xhard';                       // 어려움 (그룹상 hard로 표기하되 별도)
+}
+const BANDS=[
+  {k:'safe',cls:'safe',t:'안정',d:'여유 있음'},
+  {k:'fit',cls:'fit',t:'적정',d:'딱 맞음'},
+  {k:'reach',cls:'reach',t:'소신',d:'비슷함'},
+  {k:'hard',cls:'hard',t:'도전',d:'다소 부족'},
+  {k:'none',cls:'none',t:'입결없음',d:'통계 미제공'},
+];
+const VLABEL={safe:'안정',fit:'적정',reach:'소신',hard:'도전',xhard:'어려움',none:'입결없음'};
+function vClass(b){return b==='xhard'?'hard':b;}
+
+// ---- filter ----
+function passFilter(r){
+  if(state.gye.size&&!state.gye.has(gye(r)))return false;
+  if(state.gwon.size&&!state.gwon.has(gwon(r)))return false;
+  if(state.hak.size&&!state.hak.has(hak(r)))return false;
+  if(state.sunOnly&&!sunj(r))return false;
+  if(state.q){const q=state.q.toLowerCase();
+    if(!((univ(r)||'').toLowerCase().includes(q)||(dept(r)||'').toLowerCase().includes(q)
+      ||(jido(r)||'').toLowerCase().includes(q)))return false;}
+  return true;
+}
+const bandRank={fit:0,safe:1,reach:2,hard:3,xhard:4,none:5};
+
+function compute(){
+  let arr=[];
+  for(const r of ROWS){
+    if(!passFilter(r))continue;
+    const b=band(r);
+    if(state.hideNone&&b==='none')continue;
+    arr.push({r,b});
+  }
+  return arr;
+}
+function sortArr(arr){
+  const s=state.sort;
+  arr.sort((x,y)=>{
+    if(s==='fit'){const d=bandRank[x.b]-bandRank[y.b];if(d)return d;
+      return (avg26(x.r)??99)-(avg26(y.r)??99);}
+    if(s==='grade')return (avg26(x.r)??99)-(avg26(y.r)??99);
+    if(s==='comp')return (comp(x.r)??999)-(comp(y.r)??999);
+    if(s==='job')return (job(y.r)??-1)-(job(x.r)??-1);
+    return 0;
+  });
+}
+
+const RENDER_CAP=400;
+function render(){
+  const arr=compute();
+  // band counts (ignoring band filter, respecting other filters)
+  const counts={safe:0,fit:0,reach:0,hard:0,none:0};
+  arr.forEach(o=>{const key=o.b==='xhard'?'hard':o.b;counts[key]=(counts[key]||0)+1;});
+  // include xhard into hard count already; but 'none' hidden if hideNone
+  drawBands(counts);
+
+  let show=arr;
+  if(state.band){show=arr.filter(o=>(o.b==='xhard'?'hard':o.b)===state.band);}
+  sortArr(show);
+  document.getElementById('cnt').textContent=show.length;
+
+  const list=document.getElementById('list');list.innerHTML='';
+  const frag=document.createDocumentFragment();
+  show.slice(0,RENDER_CAP).forEach(o=>frag.appendChild(cardEl(o)));
+  list.appendChild(frag);
+  document.getElementById('more').textContent=
+    show.length>RENDER_CAP?`상위 ${RENDER_CAP}개만 표시했습니다. 필터를 좁혀 정확도를 높여보세요. (전체 ${show.length}개)`:
+    (show.length===0?'':'');
+  if(show.length===0){list.innerHTML='<div class="empty">조건에 맞는 학과가 없습니다.<br>등급이나 필터를 조정해 보세요.</div>';}
+}
+
+function drawBands(counts){
+  const host=document.getElementById('bands');host.innerHTML='';
+  BANDS.forEach(b=>{
+    if(b.k==='none'&&state.hideNone)return;
+    const el=document.createElement('div');
+    el.className='band '+b.cls+(state.band&&state.band!==b.k?' off':'')+(state.band===b.k?' sel':'');
+    el.innerHTML=`<div class="n">${counts[b.k]||0}</div><div class="t">${b.t}</div><div class="d">${b.d}</div>`;
+    el.onclick=()=>{state.band=state.band===b.k?null:b.k;render();};
+    host.appendChild(el);
+  });
+}
+
+function fmtG(v){return v==null?'–':v.toFixed(2);}
+function fmtP(v){return v==null?'–':v.toFixed(0)+'%';}
+function cardEl(o){
+  const r=o.r,b=o.b,vc=vClass(b);
+  const el=document.createElement('div');el.className='card '+vc;
+  const tags=[];
+  tags.push(`<span class="t2">${gye(r)||'-'}</span>`);
+  tags.push(`<span class="t2">${hak(r)?hak(r)+'년제':''}</span>`);
+  tags.push(`<span class="t2">${jtype(r)||''}${jname(r)&&jname(r)!==jtype(r)?'·'+jname(r):''}</span>`);
+  if(sunj(r))tags.push(`<span class="t2 min">수능최저 ${String(sunj(r)).slice(0,14)}</span>`);
+  const trend=[avg26(r),avg25(r),avg24(r)].map(x=>x==null?'–':x.toFixed(1));
+  el.innerHTML=`
+    <div class="c-head">
+      <div><div class="c-univ">${univ(r)||''} · ${jido(r)||''}</div>
+      <div class="c-dept">${dept(r)||''}</div></div>
+      <span class="verdict ${vc}">${VLABEL[b]}</span>
+    </div>
+    <div class="c-tags">${tags.join('')}</div>
+    <div class="grid-stat">
+      <div class="st"><div class="k">평균등급</div><div class="v">${fmtG(avg26(r))}</div></div>
+      <div class="st"><div class="k">최저등급</div><div class="v small">${fmtG(min26(r))}</div></div>
+      <div class="st"><div class="k">경쟁률</div><div class="v small">${comp(r)==null?'–':comp(r).toFixed(1)+':1'}</div></div>
+      <div class="st"><div class="k">취업률</div><div class="v small">${fmtP(job(r))}</div></div>
+    </div>
+    <div class="trend">3년 평균등급 <b>${trend[2]} → ${trend[1]} → ${trend[0]}</b> (24→26) · 모집 ${moin(r)??'–'}명 · 충원율 ${fmtP(chung(r))}</div>`;
+  return el;
+}
+
+// ---- wire inputs ----
+const gEl=document.getElementById('grade'),rEl=document.getElementById('gradeR');
+function setGrade(v){v=Math.min(9,Math.max(1,+v||4));state.grade=Math.round(v*10)/10;gEl.value=state.grade.toFixed(1);rEl.value=state.grade;render();}
+gEl.addEventListener('input',()=>setGrade(gEl.value));
+rEl.addEventListener('input',()=>setGrade(rEl.value));
+document.getElementById('q').addEventListener('input',e=>{state.q=e.target.value.trim();render();});
+document.getElementById('sunOnly').addEventListener('change',e=>{state.sunOnly=e.target.checked;render();});
+document.getElementById('hideNone').addEventListener('change',e=>{state.hideNone=e.target.checked;state.band=null;render();});
+document.getElementById('sort').addEventListener('change',e=>{state.sort=e.target.value;render();});
+document.getElementById('dataMeta').textContent=`총 ${ROWS.length.toLocaleString()}개 학과·전형 · 125개 전문대`;
+
+setGrade(4.0);
+</script>
+</body>
+</html>
