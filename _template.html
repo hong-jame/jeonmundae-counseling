@@ -64,6 +64,7 @@
   .beta{font-size:10px;color:#fff;background:var(--reach);padding:1px 6px;border-radius:5px;vertical-align:middle;}
   .sb-guide{font-size:12px;color:var(--sub);line-height:1.55;margin-bottom:8px;}
   .sb-guide b{color:var(--ink);}
+  .sb-pdf{margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .paste-wrap textarea{width:100%;min-height:78px;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:12.5px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;}
   #sbPreview{margin-top:10px;background:#f7f9fd;border:1px solid var(--line);border-radius:10px;padding:11px 12px;}
   .sb-summary{font-size:12.5px;line-height:1.7;color:var(--ink);}
@@ -267,8 +268,13 @@
       </div>
       <div class="paste-wrap">
         <div class="sb-head">📋 생기부 자동 입력 <span class="beta">베타</span></div>
-        <div class="sb-guide">생활기록부 <b>‘교과학습발달상황’</b> 표를 그대로 복사해 붙여넣으면 과목·단위수·석차등급을 인식해 학기별 평균을 자동 계산합니다.
+        <div class="sb-guide">생활기록부 <b>PDF 파일을 올리거나</b>, <b>‘교과학습발달상황’</b> 표를 복사해 붙여넣으면 과목·단위수·석차등급을 인식해 학기별 평균을 자동 계산합니다.
           (학기별 평균등급 숫자 5개만 붙여넣어도 됩니다.)</div>
+        <div class="sb-pdf">
+          <input type="file" id="pdfFile" accept="application/pdf,.pdf" style="display:none">
+          <button class="btn" id="pdfBtn">📄 생기부 PDF 파일 불러오기</button>
+          <span class="pastemsg" id="pdfMsg"></span>
+        </div>
         <textarea id="pasteBox" placeholder="예)&#10;1학년&#10;학기  교과  과목  단위수  원점수/과목평균(표준편차)  성취도(수강자수)  석차등급&#10;1  국어  국어  4  90/71.2(13.5)  A(298)  2&#10;1  수학  수학  4  85/68.3(15.2)  B(298)  3&#10;...&#10;&#10;또는 간단히:  4.1, 3.8, 3.5, 3.2, 3.0"></textarea>
         <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button class="btn" id="pasteBtn">분석하기</button>
@@ -329,6 +335,7 @@
 
 <div class="rov" id="rov"><div class="report" id="report"></div></div>
 
+<script src="vendor/pdf.min.js"></script>
 <script>
 const DB = /*__DATA__*/;
 const RULES = /*__RULES__*/;
@@ -585,14 +592,16 @@ function slotIdx(yr,sem){
   if(yr==2&&sem==1)return 2; if(yr==2&&sem==2)return 3;
   if(yr==3&&sem==1)return 4; return -1;
 }
-function isSaengibu(txt){return PRICE.test(txt.replace(/\s+/g,' '))|| /\d{2,3}\/\d{2,3}\([\d.]+\)/.test(txt);}
+function isSaengibu(txt){return /\d{1,3}(?:\.\d+)?\/\d{1,3}(?:\.\d+)?\s*\([\d.]+\)/.test(txt);}
 function parseSaengibu(text){
   const subs=[]; let excluded=0, curYr=null;
   text.split(/\r?\n/).forEach(raw=>{
     const line=raw.trim(); if(!line) return;
+    const hasPrice=/\d\/\d+(?:\.\d+)?\([\d.]+\)/.test(line);
     const ym=line.match(/([1-3])\s*학년/);
-    if(ym && line.replace(/\s/g,'').length<=8){curYr=+ym[1];return;}
-    if(/석차등급|성취도\(|단위\s*수|원점수\/과목/.test(line) && !/\d\/\d+\([\d.]+\)/.test(line))return; // 헤더
+    // 학년 구분 헤더(예: "1학년 교과학습발달상황", "[2학년]", "1학년") — 성적행이 아닌 경우
+    if(ym && !hasPrice && (/교과|학습|성적|이수|발달/.test(line) || line.replace(/\s/g,'').length<=8)){curYr=+ym[1];return;}
+    if(/석차등급|성취도\(|단위\s*수|원점수\/과목/.test(line) && !hasPrice)return; // 헤더 행
     const f=line.split(/\s+/);
     const pi=f.findIndex(x=>PRICE.test(x));
     if(pi<2)return;                                   // 원점수 앞에 최소 교과+단위수 필요
@@ -653,8 +662,52 @@ function runParse(){
   prev.style.display='block';
 }
 document.getElementById('pasteBtn').addEventListener('click',runParse);
+
+/* ---------- 생기부 PDF 추출 ---------- */
+if(window.pdfjsLib){try{pdfjsLib.GlobalWorkerOptions.workerSrc='vendor/pdf.worker.min.js';}catch(e){}}
+async function extractPdf(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+  let out='';
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const tc=await page.getTextContent();
+    const lines={};
+    tc.items.forEach(it=>{
+      if(!it.str||!it.str.trim())return;
+      const y=Math.round(it.transform[5]);   // baseline y
+      (lines[y]=lines[y]||[]).push(it);
+    });
+    Object.keys(lines).map(Number).sort((a,b)=>b-a).forEach(y=>{
+      const row=lines[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(it=>it.str).join(' ').replace(/\s+/g,' ').trim();
+      if(row)out+=row+'\n';
+    });
+    out+='\n';
+  }
+  // 원점수/과목평균(표준편차) 패턴 내부 공백 복원  (예: "90 / 71.2 (13.5)" → "90/71.2(13.5)")
+  out=out.replace(/(\d)\s*\/\s*(\d)/g,'$1/$2').replace(/(\d(?:\.\d+)?)\s*\(\s*([\d.]+)\s*\)/g,'$1($2)');
+  return out;
+}
+document.getElementById('pdfBtn').addEventListener('click',()=>document.getElementById('pdfFile').click());
+document.getElementById('pdfFile').addEventListener('change',async e=>{
+  const file=e.target.files[0]; if(!file)return;
+  const msg=document.getElementById('pdfMsg');
+  if(!window.pdfjsLib){msg.textContent='PDF 모듈을 불러오지 못했습니다. 웹(온라인) 주소에서 사용하거나, 표를 복사해 붙여넣어 주세요.';e.target.value='';return;}
+  msg.textContent='📄 PDF 분석 중… 잠시만요';
+  try{
+    const text=await extractPdf(file);
+    document.getElementById('pasteBox').value=text;
+    runParse();
+    const okMsg=document.getElementById('pasteMsg').textContent;
+    msg.textContent=`'${file.name}' 추출 완료`+(okMsg?' · '+okMsg:'')+' — 인식 결과를 아래에서 꼭 확인하세요.';
+  }catch(err){
+    msg.textContent='PDF 분석 실패: '+(err&&err.message||err)+' — 표를 복사해 붙여넣어 주세요.';
+  }
+  e.target.value='';
+});
 document.getElementById('pasteClear').addEventListener('click',()=>{
   document.getElementById('pasteBox').value='';document.getElementById('pasteMsg').textContent='';
+  document.getElementById('pdfMsg').textContent='';
   document.getElementById('sbPreview').style.display='none';SB=null;
 });
 document.getElementById('sbToggleDetail').addEventListener('click',()=>{
