@@ -227,7 +227,7 @@ function sortCards(arr){
     return 0;
   });
 }
-const CAP=300;
+const CAP=150;
 function fmtG(v){return v==null?'–':(+v).toFixed(2);}
 function fmtP(v){return v==null?'–':(+v).toFixed(0)+'%';}
 function fmtC(v){return v==null?'–':(+v).toFixed(1)+':1';}
@@ -368,7 +368,8 @@ function openCompare(){
 function fmtNC(v){return v==null?'–':(+v).toFixed(1);}
 
 /* ----- inputs ----- */
-document.getElementById('q').addEventListener('input',e=>{state.q=e.target.value.trim();render();});
+let qTimer;
+document.getElementById('q').addEventListener('input',e=>{const v=e.target.value.trim();clearTimeout(qTimer);qTimer=setTimeout(()=>{state.q=v;render();},170);});
 document.getElementById('sunOnly').addEventListener('change',e=>{state.sunOnly=e.target.checked;render();});
 document.getElementById('hasJob').addEventListener('change',e=>{state.hasJob=e.target.checked;render();});
 document.getElementById('sort').addEventListener('change',e=>{state.sort=e.target.value;render();});

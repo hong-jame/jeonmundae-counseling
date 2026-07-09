@@ -454,12 +454,19 @@ function passFilter(r){
   return true;
 }
 const bandRank={fit:0,safe:1,reach:2,hard:3,xhard:4,none:5,norule:6};
+// 반영등급 캐시: 학생 성적(state.all/main)에만 의존 → 성적이 바뀔 때만 재계산.
+// 필터·검색·정렬·모드전환에는 재계산하지 않아 렌더 비용을 크게 줄인다.
+let REFCACHE=null;
+function rebuildRefCache(){
+  REFCACHE = (state.mode==='auto') ? ROWS.map(computeRef) : null;
+}
 function compute(){
   const auto=state.mode==='auto';
   const arr=[];
-  for(const r of ROWS){
+  for(let i=0;i<ROWS.length;i++){
+    const r=ROWS[i];
     if(!passFilter(r))continue;
-    const ref=auto?computeRef(r):null;
+    const ref=auto?(REFCACHE?REFCACHE[i]:computeRef(r)):null;
     const b=band2(r,ref);
     if(state.hideNone&&(b==='none'||b==='norule'))continue;
     arr.push({r,b,ref});
@@ -477,7 +484,7 @@ function sortArr(arr){
   });
 }
 
-const RENDER_CAP=400;
+const RENDER_CAP=150;
 function render(){
   const arr=compute();
   const counts={safe:0,fit:0,reach:0,hard:0,none:0};
@@ -563,8 +570,10 @@ function readSemInputs(){
     const b=inp.dataset.b,i=+inp.dataset.i,v=parseFloat(inp.value);
     state[b][i]=(inp.value!==''&&!isNaN(v)&&v>=1&&v<=9)?v:null;
   });
+  rebuildRefCache();   // 성적이 바뀌었을 때만 반영등급 재계산
 }
-document.querySelectorAll('table.sem input').forEach(inp=>inp.addEventListener('input',()=>{readSemInputs();render();}));
+let semTimer;
+document.querySelectorAll('table.sem input').forEach(inp=>inp.addEventListener('input',()=>{clearTimeout(semTimer);semTimer=setTimeout(()=>{readSemInputs();render();},180);}));
 
 function updateCalcBadge(){
   const badge=document.getElementById('calcBadge');
@@ -734,12 +743,14 @@ function setMode(m){
   document.getElementById('mAuto').classList.toggle('on',m==='auto');
   document.getElementById('manualPanel').style.display=m==='manual'?'block':'none';
   document.getElementById('autoPanel').style.display=m==='auto'?'block':'none';
+  rebuildRefCache();
   render();
 }
 document.getElementById('mManual').addEventListener('click',()=>setMode('manual'));
 document.getElementById('mAuto').addEventListener('click',()=>setMode('auto'));
 
-document.getElementById('q').addEventListener('input',e=>{state.q=e.target.value.trim();render();});
+let qTimer;
+document.getElementById('q').addEventListener('input',e=>{const v=e.target.value.trim();clearTimeout(qTimer);qTimer=setTimeout(()=>{state.q=v;render();},170);});
 document.getElementById('sunOnly').addEventListener('change',e=>{state.sunOnly=e.target.checked;render();});
 document.getElementById('hideNone').addEventListener('change',e=>{state.hideNone=e.target.checked;state.band=null;render();});
 document.getElementById('sort').addEventListener('change',e=>{state.sort=e.target.value;render();});
